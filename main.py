@@ -88,7 +88,6 @@ def main(argv):
     print(angleSource)
     
     #Calculate angle & distance from averaged locations
-    print("ok")
     
     #Use calculated sound source location & own location for multiple linear regression
     model = regr.trainModel(X, yPlus)
