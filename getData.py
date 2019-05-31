@@ -7,7 +7,7 @@ Created on Sun Apr 28 13:54:57 2019
 
 import csv
 
-DATALOCATION = "C:/Users/Jasper/Documents/Schoolwerk/AfstudeerProjectBScAI/2019/Code/Locations/"
+DATALOCATION = "C:/Users/Jasper/Documents/Schoolwerk/AfstudeerProjectBScAI/2019/Code/UERoboCup-master/TrainingSetGenerator/Saved/ScreenshotMasks/"
 
 #Sourced from master thesis - Repo: https://github.com/S3BASTI3N/robopose
 def readFile(dataset_file):
@@ -24,7 +24,7 @@ def readFile(dataset_file):
 def getDataLocations(locCount):
     locationData = []
     for i in range(locCount):
-        path = "location%d.txt" % i
+        path = "mask%d.txt" % i
         lineData = readFile(path)
         locationData.append(lineData)
 	

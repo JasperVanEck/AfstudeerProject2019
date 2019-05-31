@@ -51,8 +51,8 @@ def angleSoundSource(location):
 def main(argv):
 
     #Input NAO location; units are cm
-    locations = getData.getDataLocations(2000)
-    #print(locations)
+    locations = getData.getDataLocations(10)
+    print(locations)
     """zeroI = 0
     zeroLoc = locations[0]
     zeroLoc[0] = abs(zeroLoc[0])
