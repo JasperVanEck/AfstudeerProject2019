@@ -14,6 +14,11 @@ import regressionModel as regr
 
 #Constants
 SPEEDOFSOUND = 343#m/s
+BALL_COORDS = [1276, 480]
+
+#For 2 NAOs coords, give the distance in m([X,Y],[X,Y])
+def naoDistance(nao1, nao2):
+    return math.sqrt((nao1[0]+nao2[0])**2+(nao1[1]+nao2[1])**2)
 
 #For a given delay, distance between mics and a given X coordinate, returns the Y coordinate
 def locationFunction(X, delay, micDistance):
@@ -25,7 +30,7 @@ def locationFunction(X, delay, micDistance):
 def coordinateShift(XYnao, XYtarget):
     return (int(XYnao[0]) + int(XYtarget[0]), XYnao[1] + XYtarget[1])
 
-#Line intersection coordinates, for linear only, sourced from stackOverflow
+#Line intersection coordinates, for linear only, sourced from stackOverflow([[],[]],[[],[]])
 #https://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines-in-python
 def lineIntersection(line1, line2):
     xdiff = [line1[0][0] - line1[1][0], line2[0][0] - line2[1][0]]
@@ -43,38 +48,22 @@ def lineIntersection(line1, line2):
     y = det(d, ydiff) / div
     return x, y
 
-#calculate the angle of the sound source
+#calculate the angle of the sound source[X,Y]
 def angleSoundSource(location):
     return 90 - np.arctan((location[1])/(location[0]))
 
 #Main Function; calls all other functions & stuff
 def main(argv):
 
-    #Input NAO location; units are cm
-    locations = getData.getData(10)
-    delays = getData.getTimeDelays(locations)
-    classification = getData.getClassifications(locations)
-    naoLocations = getData.getRobotLocations(locations)
-    print(locations)
+    #Retrieve Data & Seperate it in usable arrays
+    data = getData.getData(10)
+    delays = getData.getTimeDelays(data)
+    classification = getData.getClassifications(data)
+    naoLocations = getData.getRobotLocations(data)
+    #print(data)
     print(delays[0])
     print(classification)
     print(naoLocations[0])
-    #print(locations)
-    """zeroI = 0
-    zeroLoc = locations[0]
-    zeroLoc[0] = abs(zeroLoc[0])
-    zeroLoc[1] = abs(zeroLoc[1])
-    for i in range(len(locations)):
-        if ((abs(locations[i][0]) > zeroLoc[0]) and (abs(locations[i][1]) > zeroLoc[1])):
-            zeroLoc = locations[i]
-            zeroI = i
-    
-    print(str(zeroI) + " - " + str(zeroLoc))"""
-    #Input sound delay data
-    delays = getData.getDataDelays()
-    #print(delays)
-    delays[0][0] = 0.0001802
-    delays[0][1] = 0.0003254
     
     """Microphone Distances
     #Part	Location	Name	    X (m)	Y (m)	    Z (m)
@@ -82,12 +71,12 @@ def main(argv):
     #B	Front Left	MicroFL	0.0206	0.0309	0.0986
     #C	Back	Left	MicroRL	-0.0215	0.0558	0.0774
     #D	Back Right	MicroRR	-0.0215	-0.0558	0.0774"""
-    micDisAB = 0.0618 #meter
+    #micDisAB = 0.0618 #meter
     #micDisAC = math.sqrt((0.0206+0.0215)**2+(-0.0309-0.0558)**2+(0.0986-0.0774)**2) #0.09868505459
     #micDisAD = math.sqrt((0.0206+0.0215)**2+(-0.0309+0.0558)**2+(0.0986-0.0774)**2)
     #micDisBC = math.sqrt((0.0206+0.0215)**2+(0.0309-0.0558)**2+(0.0986-0.0774)**2)
     #micDisBD = math.sqrt((0.0206+0.0215)**2+(0.0309+0.0558)**2+(0.0986-0.0774)**2)
-    micDisCD = 0.1116 #meter
+    #micDisCD = 0.1116 #meter
     #print(micDisAB, " + ", micDisCD)
     
     #X = 1
