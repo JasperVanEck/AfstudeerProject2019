@@ -53,10 +53,11 @@ def main(argv):
     #Input NAO location; units are cm
     locations = getData.getData(10)
     delays = getData.getTimeDelays(locations)
-    classification = getData.getClassification(locations)
+    classification = getData.getClassifications(locations)
     naoLocations = getData.getRobotLocations(locations)
+    print(locations)
     print(delays[0])
-    print(classification[0])
+    print(classification)
     print(naoLocations[0])
     #print(locations)
     """zeroI = 0

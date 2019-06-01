@@ -38,16 +38,29 @@ def getDataDelays():
 	return delayData
 
 def getTimeDelays(data):
-    return data[-3:]
+    delays = []
+    for i in range(len(data)):
+        delays.append(data[i][-3:])
+    
+    return delays
 
 def getClassifications(data):
     classi = []
+    for i in range(len(data)):
+        outOfbound = (data[i][18] > or data[i][18] < ) or (data[i][19] >  or data[i][19] < )
+        if outOfBound:
+            classi.append(1)
+        else:
+            classi.append(0)
     
     return classi
 
 def getRobotLocations(data):
-    locations = data[:2]
-    locations.extend(data[6:8])
-    locations.extend(data[12:14])    
+    locations = []
+    for i in range(len(data)):
+        loc = data[i][:2]
+        loc.extend(data[i][6:8])
+        loc.extend(data[i][12:14])
+        locations.append(loc)
     
     return locations
