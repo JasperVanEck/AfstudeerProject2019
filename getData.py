@@ -21,7 +21,7 @@ def readFile(dataset_file):
         dataset.extend(float_elements)
     return dataset
 
-def getDataLocations(locCount):
+def getData(locCount):
     locationData = []
     for i in range(locCount):
         path = "mask%d.txt" % i
@@ -36,3 +36,18 @@ def getDataDelays():
 		delayData = list(reader)
 	
 	return delayData
+
+def getTimeDelays(data):
+    return data[-3:]
+
+def getClassifications(data):
+    classi = []
+    
+    return classi
+
+def getRobotLocations(data):
+    locations = data[:2]
+    locations.extend(data[6:8])
+    locations.extend(data[12:14])    
+    
+    return locations
