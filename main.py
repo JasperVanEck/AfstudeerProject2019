@@ -52,6 +52,22 @@ def lineIntersection(line1, line2):
 def angleSoundSource(location):
     return 90 - np.arctan((location[1])/(location[0]))
 
+#Calculate the distances between the NAOs
+def micDistances(naoLocations):
+    distances = [0, 0, 0]
+    distances[0] = naoDistance(naoLocations[0:2], naoLocations[2:2])
+    distances[1] = naoDistance(naoLocations[0:2], naoLocations[4:2])
+    distances[2] = naoDistance(naoLocations[2:2], naoLocations[4:2])
+    return distances
+
+#Determine the mid points of the mics
+def midPoints(naoLocations):
+    midPoints = []
+    midPoints.append(naoLocations[0] + naoLocations[2], naoLocations[1] + naoLocations[3])
+    midPoints.append(naoLocations[0] + naoLocations[4], naoLocations[1] + naoLocations[5])
+    midPoints.append(naoLocations[2] + naoLocations[4], naoLocations[3] + naoLocations[5])
+    return midPoints
+
 #Main Function; calls all other functions & stuff
 def main(argv):
 
@@ -63,7 +79,7 @@ def main(argv):
     #print(data)
     print(delays[0])
     print(classification)
-    print(naoLocations[0])
+    print(naoLocations[0][0:2])
     
     """Microphone Distances
     #Part	Location	Name	    X (m)	Y (m)	    Z (m)
@@ -83,6 +99,11 @@ def main(argv):
     #Determine functions of possible locations
     #yPlus = locationFunction(X, delays[0][0], micDisAB)
     #yMin = -1 * yPlus
+    
+    for i in range(len(naoLocations)):
+        distances = micDistances(naoLocations[i])
+        midPoints = midPoints(naoLocations[i])
+        
     
     #Shift to real world coordinates
     #fieldLocation = coordinateShift(locations[0], (X, yPlus))
