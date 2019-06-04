@@ -55,18 +55,26 @@ def angleSoundSource(location):
 #Calculate the distances between the NAOs
 def micDistances(naoLocations):
     distances = [0, 0, 0]
-    distances[0] = naoDistance(naoLocations[0:2], naoLocations[2:2])
-    distances[1] = naoDistance(naoLocations[0:2], naoLocations[4:2])
-    distances[2] = naoDistance(naoLocations[2:2], naoLocations[4:2])
+    distances[0] = naoDistance(naoLocations[0:2], naoLocations[2:4])
+    distances[1] = naoDistance(naoLocations[0:2], naoLocations[4:])
+    distances[2] = naoDistance(naoLocations[2:4], naoLocations[4:])
     return distances
 
 #Determine the mid points of the mics
 def midPoints(naoLocations):
     midPoints = []
-    midPoints.append(naoLocations[0] + naoLocations[2], naoLocations[1] + naoLocations[3])
-    midPoints.append(naoLocations[0] + naoLocations[4], naoLocations[1] + naoLocations[5])
-    midPoints.append(naoLocations[2] + naoLocations[4], naoLocations[3] + naoLocations[5])
+    midPoints.append([naoLocations[0] + naoLocations[2], naoLocations[1] + naoLocations[3]])
+    midPoints.append([naoLocations[0] + naoLocations[4], naoLocations[1] + naoLocations[5]])
+    midPoints.append([naoLocations[2] + naoLocations[4], naoLocations[3] + naoLocations[5]])
     return midPoints
+
+#Delays between Mics rather than source and a mic
+def delayMics(delays):
+    delayMic = []
+    delayMic.append(abs(delays[0]-delays[1]))
+    delayMic.append(abs(delays[0]-delays[2]))
+    delayMic.append(abs(delays[1]-delays[2]))
+    return delayMic
 
 #Main Function; calls all other functions & stuff
 def main(argv):
@@ -77,9 +85,9 @@ def main(argv):
     classification = getData.getClassifications(data)
     naoLocations = getData.getRobotLocations(data)
     #print(data)
-    print(delays[0])
-    print(classification)
-    print(naoLocations[0][0:2])
+    #print(delays[0])
+    #print(classification)
+    print(naoLocations[0])
     
     """Microphone Distances
     #Part	Location	Name	    X (m)	Y (m)	    Z (m)
@@ -95,15 +103,22 @@ def main(argv):
     #micDisCD = 0.1116 #meter
     #print(micDisAB, " + ", micDisCD)
     
-    #X = 1
+    X = 10
     #Determine functions of possible locations
     #yPlus = locationFunction(X, delays[0][0], micDisAB)
     #yMin = -1 * yPlus
     
     for i in range(len(naoLocations)):
         distances = micDistances(naoLocations[i])
-        midPoints = midPoints(naoLocations[i])
-        
+        midPoint = midPoints(naoLocations[i])
+        print(midPoint)
+        delayMic = delayMics(delays[i])
+        yPlus = []
+        yMin = []
+        for j in range(len(distances)):
+            yPlus.append(locationFunction(X, delayMic[j], distances[j]))
+            
+        yMin = -yPlus
     
     #Shift to real world coordinates
     #fieldLocation = coordinateShift(locations[0], (X, yPlus))
