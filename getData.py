@@ -30,13 +30,6 @@ def getData(locCount):
 	
     return locationData
 
-def getDataDelays():
-	with open('delaysData.csv' , 'r') as f:
-		reader = csv.reader(f)
-		delayData = list(reader)
-	
-	return delayData
-
 def getTimeDelays(data):
     delays = []
     for i in range(len(data)):
@@ -58,9 +51,19 @@ def getClassifications(data):
 def getRobotLocations(data):
     locations = []
     for i in range(len(data)):
-        loc = data[i][:2]
-        loc.extend(data[i][6:8])
-        loc.extend(data[i][12:14])
+        loc = dataCentiToMeter(data[i][:2])
+        loc.extend(dataCentiToMeter(data[i][6:8]))
+        loc.extend(dataCentiToMeter(data[i][12:14]))
         locations.append(loc)
     
     return locations
+
+def getSoundSourceLocations(data):
+    locations = []
+    for i in range(len(data)):
+        locations.append(dataCentiToMeter(data[i][18:20])) 
+    
+    return locations
+
+def dataCentiToMeter(data):
+    return [data[0]/100, data[1]/100]
