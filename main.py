@@ -8,10 +8,12 @@ Created on Sun Apr 28 13:54:57 2019
 import sys
 import numpy as np
 import math
-#import qi
+import random
 import getData
-import regressionModel as regr
 from sklearn import preprocessing 
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report
+import statsmodels.api as sm
 
 #Constants
 SPEEDOFSOUND = 343#m/s
@@ -234,24 +236,70 @@ def localToReal(local, naoCombo, midPoint, closests):
     #print(real)
     return real
 
+#Create noise to be applied to time delays and add it.
+def addGaussianNoise(timeDelays):
+    noise = []
+    for i in range(len(timeDelays[0])):
+        noise.append(np.random.normal(np.mean(timeDelays[:,[i]]), np.std(timeDelays[:,[i]]), len(timeDelays[:,[i]])))
+    return timeDelays + np.array(noise).T
+
+#Create noise to be applied to time delays with multiplier.
+def gaussianNoise(timeDelays, mult):
+    noise = []
+    for i in range(len(timeDelays[0])):
+        noise.append(np.random.normal(np.mean(timeDelays[:,[i]]), np.std(timeDelays[:,[i]]), len(timeDelays[:,[i]])))
+    
+    noise = [[i*mult for i in r] for r in noise]
+    return np.array(noise).T
+
+#Create model using sklearn
+def trainModel(X, Y):
+    modelSK = LogisticRegression()
+    modelSK.fit(X, Y)
+    
+    return modelSK
+
+#Create model using SM
+def trainModelSM(X, Y):
+    X = sm.add_constant(X)
+    #modelSM = sm.OLS(Y, X).fit()
+    modelSM = sm.Logit(Y, X).fit()
+    
+    return modelSM
+
 #Main Function; calls all other functions & stuff
 def main(argv):
 
     #Retrieve Data & Seperate it in usable arrays
-    data = getData.getData(10)
-    delays = getData.getTimeDelays(data)
+    data = getData.getData(25000)
+    random.shuffle(data)
+    delays = np.array(getData.getTimeDelays(data))
     classification = getData.getClassifications(data)
-    soundSourceLoc = getData.getSoundSourceLocations(data)
-    print(soundSourceLoc)
+    #soundSourceLoc = getData.getSoundSourceLocations(data)
+    #print(soundSourceLoc)
     naoLocations = getData.getRobotLocations(data)
     #print(data)
     #print(delays[0])
     #print(classification)
     #print(naoLocations)
+    #print(np.std(delays[:,[0]])/100)
+    #delays2 = addGaussianNoise(np.array(delays))
+    #timeDelays2 = []
+    #for i in range(len(delays2)):
+    #    timeDelays2.append(delayMics(delays2[i]))
+    
+    timeDelays = []
+    for i in range(len(delays)):
+        timeDelays.append(delayMics(delays[i]))
         
+    timeDelays2 = timeDelays + gaussianNoise(np.array(timeDelays), 0)
+    #print(timeDelays)
+    #print("--------")
+    #print(timeDelays2)
+    """
     predictedSoundSource = []
     X_coord = 10
-    X2_coord= 600
+    X2_coord= 15
     #Determine functions of possible locations    
     for i in range(len(naoLocations)):
         distances = micDistances(naoLocations[i])
@@ -285,17 +333,20 @@ def main(argv):
             yMin2.append(np.array(localToReal(shift4, naoCombos, midPoint[j], closests[j])))
 
         
-
+        #Arrayify the coordinates of possible sound source locations
         intersectionsPosi = []
         yPlus1 = np.array(yPlus1)
         yPlus2 = np.array(yPlus2)
         yMin1 = np.array(yMin1)
         yMin2 = np.array(yMin2)
+        
+        #Create the lines to use for intersection
         lines = []
         for j in range(len(yPlus1)):
             lines.append(line(yPlus1[j], yPlus2[j]))
             lines.append(line(yMin1[j], yMin2[j]))
-            
+        
+        #Intersect all the lines, except for itself and the minus version
         for j in range(len(lines)):
             l = 0
             if j%2 == 0:
@@ -305,27 +356,41 @@ def main(argv):
             for k in range(l, len(lines), 1):
                 intersectionsPosi.append(intersection(lines[j], lines[k]))
 
-        
-        print(i)
-        print(intersectionsPosi)
-        print("----")
-        
+        #Average the intersection Positions
         predictedSoundSource.append(averageCoords(intersectionsPosi))
-        
-    train = np.append(naoLocations, predictedSoundSource, axis=1)
-    norm_train = preprocessing.normalize(train)
-    #print(train)
-    #print(predictedSoundSource)
-    #naoLocations.append(predictedSoundSource)
-    #print(naoLocations)
-    #Use calculated sound source location & own location for multiple linear regression
-    #model = regr.trainModel(X, yPlus)
-    #modelSM = regr.trainModelSM(X, yPlus)
+        print(i)
+        print(predictedSoundSource)
+        print("----")
+    """    
     
-    #model.predict(X)
-    #modelSM.predict(X)
+    #Append time delays to locations to form complete matrix of data
+    train = np.append(naoLocations, timeDelays2, axis=1)
+    
+    #Split data in test and training sets.
+    testLength = 1000
+    test = train[-testLength:]
+    #print(len(test))
+    pre_train = train[:len(train)-testLength]
+    #print(len(pre_train))
+    classTest = classification[-testLength:]
+    classTrain = classification[:len(classification)-testLength]
+
+    #Normalize test & training data
+    norm_train = preprocessing.normalize(pre_train)
+    #print(classification)
+    
+    #Use calculated sound source location & own location for multiple linear regression
+    model = trainModel(norm_train, classTrain)
+    #modelSM = trainModelSM(norm_train, classification)
+    
+    
+    
+    classPred = model.predict(test)
+    print(classification_report(classTest, classPred, target_names=['Inside','Out of bounds']))
+    #modelSM.predict(test)
+    
     #Check actual sound location vs calculated location, give error etc.
-    #print(modelSM.smModelSummary())
+    #print(modelSM.summary())
 
 
 if __name__ == "__main__":

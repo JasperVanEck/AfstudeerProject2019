@@ -40,7 +40,7 @@ def getTimeDelays(data):
 def getClassifications(data):
     classi = []
     for i in range(len(data)):
-        outOfBound = (data[i][18] > 1575 or data[i][18] < 980) or (data[i][19] > 928 or data[i][19] < 30)
+        outOfBound = (data[i][18] > 300 or data[i][18] < -300) or (data[i][19] > 447 or data[i][19] < -447)
         if outOfBound:
             classi.append(1)
         else:

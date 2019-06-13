@@ -6,6 +6,7 @@ Created on Sun Apr 28 13:54:57 2019
 """
 
 from sklearn import linear_model as linearRegression
+from sklearn.linear_model import LogisticRegression
 import statsmodels.api as sm
 
 hasModelSKRun = False
@@ -19,7 +20,7 @@ def trainModel(X, Y):
     global modelSK
     if (hasModelSKRun):
         return "Model has run already."
-    modelSK = linearRegression.LinearRegression()
+    modelSK = LogisticRegression()
     modelSK.fit(X, Y)
     hasModelSKRun = True
     
@@ -34,7 +35,8 @@ def trainModelSM(X, Y):
     if (hasModelSMRun):
         return "Model has run already"
     X = sm.add_constant(X)
-    modelSM = sm.OLS(Y, X).fit()
+    #modelSM = sm.OLS(Y, X).fit()
+    modelSM = sm.Logit(Y, X).fit()
     hasModelSMRun = True
     
     return modelSM
