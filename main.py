@@ -32,6 +32,12 @@ def locationFunction(X, delay, micDistance):
     Xb = micDistance / 2
     return math.sqrt((((ABaccent**2)/4)-(Xb**2)) + (X**2 * (((4*(Xb**2))/Xb**2) - 1)))
 
+#Determine the minimum viable X coord to use in the locationFunction
+def minXCoord(delay, micDistance):
+    ABaccent = SPEEDOFSOUND * delay
+    Xb = micDistance / 2
+    return math.sqrt(-1*((ABaccent**2 * (ABaccent**2 - 4 * Xb**2))/(4*(4 * Xb**2 - ABaccent**2))))
+
 #function to shift coordinates from NAO coords to world/field coords
 def coordinateShift(XYnao, XYtarget):
     new = []
@@ -275,7 +281,7 @@ def trainModelSM(X, Y):
 def main(argv):
 
     #Retrieve Data & Seperate it in usable arrays
-    data = getData.getData(2500)
+    data = getData.getData(25000)
     random.shuffle(data)
     delays = np.array(getData.getTimeDelays(data))
     classification = getData.getClassifications(data)
@@ -287,13 +293,13 @@ def main(argv):
     for i in range(len(delays)):
         timeDelays.append(delayMics(delays[i]))
         
-    multiplier = 1
+    multiplier = 5
     timeDelays2 = timeDelays + gaussianNoise(np.array(timeDelays), multiplier)
 
     """
     predictedSoundSource = []
     X_coord = 10
-    X2_coord= 15
+    X2_coord= 600
     #Determine functions of possible locations    
     for i in range(len(naoLocations)):
         distances = micDistances(naoLocations[i])
@@ -306,7 +312,7 @@ def main(argv):
         yMin2 = []
         for j in range(len(distances)):
             naoCombos = naoCombo(naoLocations[i], j)
-            
+            X_coord = minXCoord(delayMic[j], distances[j])
             shift1 = [X_coord]
             coord1 = locationFunction(X_coord, delayMic[j], distances[j])
             shift1.append(coord1)
@@ -361,7 +367,7 @@ def main(argv):
     train = np.append(naoLocations, timeDelays2, axis=1)
     
     #Split data in test and training sets.
-    testLength = 100
+    testLength = 1000
     pre_test = train[-testLength:]
     pre_train = train[:len(train)-testLength]
     classTest = classification[-testLength:]
@@ -377,7 +383,7 @@ def main(argv):
 
     #Do prediction on test data & print report
     classPred = model.predict(norm_test)
-    classPredProb = model.predict_proba(norm_test)
+    #classPredProb = model.predict_proba(norm_test)
 
     #Print the Results
     print("The noise multiplier: " + str(multiplier))
