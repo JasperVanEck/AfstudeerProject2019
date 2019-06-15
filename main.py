@@ -13,6 +13,10 @@ import getData
 from sklearn import preprocessing 
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import accuracy_score
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
 #Constants
@@ -247,14 +251,14 @@ def addGaussianNoise(timeDelays):
 def gaussianNoise(timeDelays, mult):
     noise = []
     for i in range(len(timeDelays[0])):
-        noise.append(np.random.normal(np.mean(timeDelays[:,[i]]), np.std(timeDelays[:,[i]]), len(timeDelays[:,[i]])))
+        noise.append(np.random.normal(np.mean(timeDelays[:,[i]]), np.std(timeDelays[:,[i]])*mult, len(timeDelays[:,[i]])))
     
-    noise = [[i*mult for i in r] for r in noise]
+    #noise = [[i*mult for i in r] for r in noise]
     return np.array(noise).T
 
 #Create model using sklearn
 def trainModel(X, Y):
-    modelSK = LogisticRegression()
+    modelSK = LogisticRegression(class_weight = 'balanced')
     modelSK.fit(X, Y)
     
     return modelSK
@@ -271,31 +275,21 @@ def trainModelSM(X, Y):
 def main(argv):
 
     #Retrieve Data & Seperate it in usable arrays
-    data = getData.getData(25000)
+    data = getData.getData(2500)
     random.shuffle(data)
     delays = np.array(getData.getTimeDelays(data))
     classification = getData.getClassifications(data)
     #soundSourceLoc = getData.getSoundSourceLocations(data)
     #print(soundSourceLoc)
     naoLocations = getData.getRobotLocations(data)
-    #print(data)
-    #print(delays[0])
-    #print(classification)
-    #print(naoLocations)
-    #print(np.std(delays[:,[0]])/100)
-    #delays2 = addGaussianNoise(np.array(delays))
-    #timeDelays2 = []
-    #for i in range(len(delays2)):
-    #    timeDelays2.append(delayMics(delays2[i]))
     
     timeDelays = []
     for i in range(len(delays)):
         timeDelays.append(delayMics(delays[i]))
         
-    timeDelays2 = timeDelays + gaussianNoise(np.array(timeDelays), 0)
-    #print(timeDelays)
-    #print("--------")
-    #print(timeDelays2)
+    multiplier = 1
+    timeDelays2 = timeDelays + gaussianNoise(np.array(timeDelays), multiplier)
+
     """
     predictedSoundSource = []
     X_coord = 10
@@ -367,31 +361,54 @@ def main(argv):
     train = np.append(naoLocations, timeDelays2, axis=1)
     
     #Split data in test and training sets.
-    testLength = 1000
-    test = train[-testLength:]
-    #print(len(test))
+    testLength = 100
+    pre_test = train[-testLength:]
     pre_train = train[:len(train)-testLength]
-    #print(len(pre_train))
     classTest = classification[-testLength:]
     classTrain = classification[:len(classification)-testLength]
 
     #Normalize test & training data
     norm_train = preprocessing.normalize(pre_train)
-    #print(classification)
-    
+    norm_test = preprocessing.normalize(pre_test)
+
     #Use calculated sound source location & own location for multiple linear regression
     model = trainModel(norm_train, classTrain)
     #modelSM = trainModelSM(norm_train, classification)
-    
-    
-    
-    classPred = model.predict(test)
+
+    #Do prediction on test data & print report
+    classPred = model.predict(norm_test)
+    classPredProb = model.predict_proba(norm_test)
+
+    #Print the Results
+    print("The noise multiplier: " + str(multiplier))
+    print("The accuracy: " + str(accuracy_score(classTest, classPred)))
     print(classification_report(classTest, classPred, target_names=['Inside','Out of bounds']))
-    #modelSM.predict(test)
+    print("The Mean Squared Error: " + str(mean_squared_error(classTest, classPred)))
     
     #Check actual sound location vs calculated location, give error etc.
     #print(modelSM.summary())
+    
+    """
+    #Create plot figure of model; Source: https://towardsdatascience.com/building-a-logistic-regression-in-python-301d27367c24
+    X = np.array(classPredProb)
+    y = classPred
+    print(y)
+    print(len(y))
+    inside = X[np.where(y==0)]
+    outside = X[np.where(y==1)]
+    print(outside)
+    #print(len(test))
+    
 
+    plt.figure(dpi=120)
+    plt.scatter(inside[:,0], inside[:,1] , alpha=0.5, label='Inside', s=2, color='navy')
+    plt.scatter(outside[:,0], outside[:,1], alpha=0.5, label='Outside', s=2, color='darkorange')
+    plt.legend()
+    plt.xlabel('Probability predicted inside the field')
+    plt.ylabel('Probability predicted outside the field')
+    plt.gca().set_aspect('equal')
+    plt.show()
+    """
 
 if __name__ == "__main__":
     main(sys.argv)
