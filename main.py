@@ -10,13 +10,14 @@ import numpy as np
 import math
 import random
 import getData
-from sklearn import preprocessing 
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn import preprocessing 
 from sklearn.metrics import classification_report
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import accuracy_score
-from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
 import statsmodels.api as sm
 
 #Constants
@@ -36,7 +37,7 @@ def locationFunction(X, delay, micDistance):
 def minXCoord(delay, micDistance):
     ABaccent = SPEEDOFSOUND * delay
     Xb = micDistance / 2
-    return math.sqrt(-1*((ABaccent**2 * (ABaccent**2 - 4 * Xb**2))/(4*(4 * Xb**2 - ABaccent**2))))
+    return math.sqrt(-1*((ABaccent**2 * (ABaccent**2 - 4 * Xb**2))/(4*(4 * Xb**2 - ABaccent**2))))+5
 
 #function to shift coordinates from NAO coords to world/field coords
 def coordinateShift(XYnao, XYtarget):
@@ -44,24 +45,6 @@ def coordinateShift(XYnao, XYtarget):
     new.append(XYnao[0] + XYtarget[0])
     new.append(XYnao[1] + XYtarget[1])
     return new
-
-"""Line intersection coordinates, for linear only, sourced from stackOverflow([[],[]],[[],[]])
-#https://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines-in-python
-def lineIntersection(line1, line2):
-    xdiff = [line1[0][0] - line1[1][0], line2[0][0] - line2[1][0]]
-    ydiff = [line1[0][1] - line1[1][1], line2[0][1] - line2[1][1]]
-    
-    def det(a, b):
-        return a[0] * b[1] - a[1] * b[0]
-
-    div = det(xdiff, ydiff)
-    if div == 0:
-       raise Exception('lines do not intersect')
-
-    d = (det(*line1), det(*line2))
-    x = det(d, xdiff) / div
-    y = det(d, ydiff) / div
-    return x, y"""
 
 #Line intersection coordinates, for linear only, sourced from stackOverflow([[],[]],[[],[]])
 #https://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines-in-python
@@ -122,53 +105,6 @@ def averageCoords(coordsArray):
     y_avgr = y_total / n
     return [x_avgr, y_avgr]
 
-"""
-#create realworld coords from translation matrix and local coords
-def localToReal(m, localCoords):
-    realCoords = []
-    localM = np.matrix([localCoords[0], localCoords[1], 1])
-    realM = m * localM.T
-    realCoords = realM.T.getA1()[0:2]
-    return realCoords
-    
-#Create a transformation matrix to translate from mic space to real space.([x,y],[x,y],[x,y],[1 or 2])
-def translationMatrix(naoCombo, midPoint, closests):
-    x = naoDistance(naoCombo[0], midPoint)
-    a = 0
-    b = 0
-    if closests == 1:
-        a = np.matrix([[x, 0, -x], [0, 0, 0], [1, 1, 1]])
-        b = np.matrix([[naoCombo[0][0], midPoint[0], naoCombo[1][0]], [naoCombo[0][1], midPoint[1], naoCombo[1][1]], [1, 1, 1]])
-    else:
-        a = np.matrix([[-x, 0, x], [0, 0, 0], [1, 1, 1]])
-        b = np.matrix([[naoCombo[0][0], midPoint[0], naoCombo[1][0]], [naoCombo[0][1], midPoint[1], naoCombo[1][1]], [1, 1, 1]]) 
-        
-    inverse = 0
-    try:
-        inverse = inv(a)
-    except np.linalg.LinAlgError as e:
-        print(e)
-        print("Fookin error")
-    
-    print(a)
-    #print(b)
-    print(inverse)
-    print(a*inverse.T)
-    #m = np.matmul(b, inverse)
-    m = b*inverse
-    #print(m)
-    return m
-
-#From https://stackoverflow.com/questions/13795682/numpy-error-singular-matrix
-def inv(m):
-    a, b = m.shape
-    if a != b:
-        raise ValueError("Only square matrices are invertible.")
-
-    i = np.eye(a, a)
-    return np.linalg.lstsq(m, i, rcond=None)[0]
-"""
-
 #Determine which mic of pairings is closests
 def closestsMic(delays):
     closests = [0, 0, 0]
@@ -218,7 +154,7 @@ def angle_between(v1, v2):
     """
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
-    return math.cos(math.radians(np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))))
+    return math.radians(np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)))
 
 #Rotate a vector by certain degrees counterclockwise
 def rotateVector(vector, theta):
@@ -264,7 +200,9 @@ def gaussianNoise(timeDelays, mult):
 
 #Create model using sklearn
 def trainModel(X, Y):
-    modelSK = LogisticRegression(class_weight = 'balanced')
+    modelSK = AdaBoostClassifier(n_estimators=100, random_state=0)
+    #modelSK = KNeighborsClassifier(n_neighbors=3, weights='distance')
+    #modelSK = LogisticRegression(class_weight = 'balanced')
     modelSK.fit(X, Y)
     
     return modelSK
@@ -293,18 +231,17 @@ def main(argv):
     for i in range(len(delays)):
         timeDelays.append(delayMics(delays[i]))
         
-    multiplier = 5
+    multiplier = 0
     timeDelays2 = timeDelays + gaussianNoise(np.array(timeDelays), multiplier)
 
-    """
+    
     predictedSoundSource = []
-    X_coord = 10
-    X2_coord= 600
     #Determine functions of possible locations    
     for i in range(len(naoLocations)):
         distances = micDistances(naoLocations[i])
         midPoint = midPoints(naoLocations[i])
-        delayMic = delayMics(delays[i])
+        #delayMic = delayMics(delays[i])
+        delayMic = timeDelays2[i]
         closests = closestsMic(delays[i])
         yPlus1 = []
         yPlus2 = []
@@ -313,6 +250,7 @@ def main(argv):
         for j in range(len(distances)):
             naoCombos = naoCombo(naoLocations[i], j)
             X_coord = minXCoord(delayMic[j], distances[j])
+            X2_coord = X_coord + 20
             shift1 = [X_coord]
             coord1 = locationFunction(X_coord, delayMic[j], distances[j])
             shift1.append(coord1)
@@ -334,7 +272,7 @@ def main(argv):
 
         
         #Arrayify the coordinates of possible sound source locations
-        intersectionsPosi = []
+        intersections = []
         yPlus1 = np.array(yPlus1)
         yPlus2 = np.array(yPlus2)
         yMin1 = np.array(yMin1)
@@ -354,17 +292,24 @@ def main(argv):
             else:
                 l = j+1
             for k in range(l, len(lines), 1):
-                intersectionsPosi.append(intersection(lines[j], lines[k]))
+                intersections.append(intersection(lines[j], lines[k]))
 
+        goodIntsect = []
+        for j in range(len(intersections)):
+            if (intersections[j][0] < 12 and intersections[j][0] > -12) and (intersections[j][1] < 12 and intersections[j][1] > -12):
+                goodIntsect.append(intersections[j])
+        
+        #print(goodIntsect)
+        #print("----")
         #Average the intersection Positions
-        predictedSoundSource.append(averageCoords(intersectionsPosi))
-        print(i)
-        print(predictedSoundSource)
-        print("----")
-    """    
-    
+        predictedSoundSource.append(averageCoords(goodIntsect))
+        
+    #print(predictedSoundSource)
+
     #Append time delays to locations to form complete matrix of data
-    train = np.append(naoLocations, timeDelays2, axis=1)
+    #train = np.append(naoLocations, timeDelays2, axis=1)
+    train = np.append(naoLocations, predictedSoundSource, axis=1)
+    #train = np.append(naoLocations, soundSourceLoc, axis=1)
     
     #Split data in test and training sets.
     testLength = 1000
@@ -386,35 +331,14 @@ def main(argv):
     #classPredProb = model.predict_proba(norm_test)
 
     #Print the Results
+    print(model.__class__.__name__)
     print("The noise multiplier: " + str(multiplier))
     print("The accuracy: " + str(accuracy_score(classTest, classPred)))
     print(classification_report(classTest, classPred, target_names=['Inside','Out of bounds']))
     print("The Mean Squared Error: " + str(mean_squared_error(classTest, classPred)))
-    
-    #Check actual sound location vs calculated location, give error etc.
-    #print(modelSM.summary())
-    
-    """
-    #Create plot figure of model; Source: https://towardsdatascience.com/building-a-logistic-regression-in-python-301d27367c24
-    X = np.array(classPredProb)
-    y = classPred
-    print(y)
-    print(len(y))
-    inside = X[np.where(y==0)]
-    outside = X[np.where(y==1)]
-    print(outside)
-    #print(len(test))
-    
-
-    plt.figure(dpi=120)
-    plt.scatter(inside[:,0], inside[:,1] , alpha=0.5, label='Inside', s=2, color='navy')
-    plt.scatter(outside[:,0], outside[:,1], alpha=0.5, label='Outside', s=2, color='darkorange')
-    plt.legend()
-    plt.xlabel('Probability predicted inside the field')
-    plt.ylabel('Probability predicted outside the field')
-    plt.gca().set_aspect('equal')
-    plt.show()
-    """
+    print("Cofusion Matrix: ")
+    print("(tn, fp, fn, tp)")
+    print(confusion_matrix(classTest, classPred).ravel())
 
 if __name__ == "__main__":
     main(sys.argv)
