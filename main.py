@@ -13,6 +13,8 @@ import getData
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
 from sklearn import preprocessing 
 from sklearn.metrics import classification_report
 from sklearn.metrics import mean_squared_error
@@ -201,19 +203,13 @@ def gaussianNoise(timeDelays, mult):
 #Create model using sklearn
 def trainModel(X, Y):
     #modelSK = AdaBoostClassifier(n_estimators=100, random_state=0)
-    modelSK = KNeighborsClassifier(n_neighbors=15, weights='distance')
+    #modelSK = KNeighborsClassifier(n_neighbors=15, weights='distance')
+    modelSK = SVC(kernel='poly')
     #modelSK = LogisticRegression(class_weight = 'balanced')
+    #modelSK = MLPClassifier(hidden_layer_sizes=100,activation='logistic',learning_rate='invscaling',alpha=1)
     modelSK.fit(X, Y)
     
     return modelSK
-
-#Create model using SM
-def trainModelSM(X, Y):
-    X = sm.add_constant(X)
-    #modelSM = sm.OLS(Y, X).fit()
-    modelSM = sm.Logit(Y, X).fit()
-    
-    return modelSM
 
 #Main Function; calls all other functions & stuff
 def main(argv):
@@ -231,7 +227,7 @@ def main(argv):
     for i in range(len(delays)):
         timeDelays.append(delayMics(delays[i]))
         
-    multiplier = 10
+    multiplier = 0
     timeDelays2 = timeDelays + gaussianNoise(np.array(timeDelays), multiplier)
 
     
@@ -305,12 +301,12 @@ def main(argv):
         predictedSoundSource.append(averageCoords(goodIntsect))
         
     #print(predictedSoundSource)
-
+    train = np.ones([len(naoLocations),1])
     #Append time delays to locations to form complete matrix of data
     #train = np.append(naoLocations, timeDelays2, axis=1)
-    train = np.append(naoLocations, predictedSoundSource, axis=1)
+    #train = np.append(naoLocations, predictedSoundSource, axis=1)
     #train = np.append(naoLocations, soundSourceLoc, axis=1)
-    #train = predictedSoundSource
+    train = np.hstack([train, predictedSoundSource])
     
     #Split data in test and training sets.
     testLength = 1000
