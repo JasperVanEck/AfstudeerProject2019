@@ -200,8 +200,8 @@ def gaussianNoise(timeDelays, mult):
 
 #Create model using sklearn
 def trainModel(X, Y):
-    modelSK = AdaBoostClassifier(n_estimators=100, random_state=0)
-    #modelSK = KNeighborsClassifier(n_neighbors=3, weights='distance')
+    #modelSK = AdaBoostClassifier(n_estimators=100, random_state=0)
+    modelSK = KNeighborsClassifier(n_neighbors=15, weights='distance')
     #modelSK = LogisticRegression(class_weight = 'balanced')
     modelSK.fit(X, Y)
     
@@ -231,7 +231,7 @@ def main(argv):
     for i in range(len(delays)):
         timeDelays.append(delayMics(delays[i]))
         
-    multiplier = 0
+    multiplier = 10
     timeDelays2 = timeDelays + gaussianNoise(np.array(timeDelays), multiplier)
 
     
@@ -310,6 +310,7 @@ def main(argv):
     #train = np.append(naoLocations, timeDelays2, axis=1)
     train = np.append(naoLocations, predictedSoundSource, axis=1)
     #train = np.append(naoLocations, soundSourceLoc, axis=1)
+    #train = predictedSoundSource
     
     #Split data in test and training sets.
     testLength = 1000
