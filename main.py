@@ -198,7 +198,7 @@ def gaussianNoise(timeDelays, mult):
 
 #Create model using sklearn
 def trainModel(X, Y, N):
-    #modelSK = AdaBoostClassifier(n_estimators=N, random_state=0)
+    #modelSK = AdaBoostClassifier(n_estimators=N)
     modelSK = KNeighborsClassifier(n_neighbors=N, weights='distance')
     #modelSK = SVC(kernel='rbf',class_weight = 'balanced')
     #modelSK = DecisionTreeClassifier()
@@ -208,6 +208,14 @@ def trainModel(X, Y, N):
     modelSK.fit(X, Y)
     
     return modelSK
+
+#Change values in array from 0 to -1
+def changeToMinusOne(classification):
+    for i in range(len(classification)):
+        if classification[i] == 0:
+            classification[i] = -1
+    
+    return classification
 
 #Main Function; calls all other functions & stuff
 def main(argv):
@@ -225,129 +233,131 @@ def main(argv):
         timeDelays.append(delayMics(delays[i]))
         
     multiplier = 0
-    
+    n = 0
 
     BestAccu = 0
     BestN = 0
-    for n in range(6):
-        print("Parameter: " + str(n))
-        multiplier = n
-        timeDelays2 = timeDelays + gaussianNoise(np.array(timeDelays), multiplier)
-        predictedSoundSource = []
-    
-        #Determine functions of possible locations    
-        for i in range(len(naoLocations)):
-            distances = micDistances(naoLocations[i])
-            midPoint = midPoints(naoLocations[i])
-            delayMic = timeDelays2[i]
-            closests = closestsMic(delays[i])
-            yPlus1 = []
-            yPlus2 = []
-            yMin1 = []
-            yMin2 = []
-            for j in range(len(distances)):
-                naoCombos = naoCombo(naoLocations[i], j)
-                #Determine the minimum of X for which the function is defined
-                X_coord = minXCoord(delayMic[j], distances[j])
-                X2_coord = X_coord + 20
-                shift1 = [X_coord]
-                
-                #Get the corresponding y value
-                coord1 = locationFunction(X_coord, delayMic[j], distances[j])
-                shift1.append(coord1)
-                #convert to from local space to real space
-                yPlus1.append(np.array(localToReal(shift1, naoCombos, midPoint[j], closests[j])))
-    
-                shift2 = [X2_coord]
-                coord2 = locationFunction(X2_coord, delayMic[j], distances[j])
-                shift2.append(coord2)
-                yPlus2.append(np.array(localToReal(shift2, naoCombos, midPoint[j], closests[j])))
-    
-                #Negative Part
-                shift3 = [X_coord]
-                shift3.append(-coord1)
-                yMin1.append(np.array(localToReal(shift3, naoCombos, midPoint[j], closests[j])))
-    
-                shift4 = [X2_coord]
-                shift4.append(-coord2)
-                yMin2.append(np.array(localToReal(shift4, naoCombos, midPoint[j], closests[j])))
-    
+
+    print("Parameter: " + str(n))
+    #multiplier = n
+    timeDelays2 = timeDelays + gaussianNoise(np.array(timeDelays), multiplier)
+    predictedSoundSource = []
+
+    #Determine functions of possible locations    
+    for i in range(len(naoLocations)):
+        distances = micDistances(naoLocations[i])
+        midPoint = midPoints(naoLocations[i])
+        delayMic = timeDelays2[i]
+        closests = closestsMic(delays[i])
+        yPlus1 = []
+        yPlus2 = []
+        yMin1 = []
+        yMin2 = []
+        for j in range(len(distances)):
+            naoCombos = naoCombo(naoLocations[i], j)
+            #Determine the minimum of X for which the function is defined
+            X_coord = minXCoord(delayMic[j], distances[j])
+            X2_coord = X_coord + 20
+            shift1 = [X_coord]
             
-            #Arrayify the coordinates of possible sound source locations
-            intersections = []
-            yPlus1 = np.array(yPlus1)
-            yPlus2 = np.array(yPlus2)
-            yMin1 = np.array(yMin1)
-            yMin2 = np.array(yMin2)
-            
-            #Create the lines to use for intersection
-            lines = []
-            for j in range(len(yPlus1)):
-                lines.append(line(yPlus1[j], yPlus2[j]))
-                lines.append(line(yMin1[j], yMin2[j]))
-            
-            #Intersect all the lines, except for itself and the minus version
-            for j in range(len(lines)):
-                l = 0
-                if j%2 == 0:
-                    l = j+2
-                else:
-                    l = j+1
-                for k in range(l, len(lines), 1):
-                    intersections.append(intersection(lines[j], lines[k]))
-    
-            #Apply the heuristic of throwing out intersection that are estimated 
-            #to be outside the placement zone of the Sound source during the simulation
-            goodIntsect = []
-            for j in range(len(intersections)):
-                if (intersections[j][0] < 12 and intersections[j][0] > -12) and (intersections[j][1] < 12 and intersections[j][1] > -12):
-                    goodIntsect.append(intersections[j])
-            
-            predictedSoundSource.append(averageCoords(goodIntsect))
-            
-        #Create bias column
-        train = np.ones([len(naoLocations),1])
-        #Append time delays to locations to form complete matrix of data
-        #train = np.append(naoLocations, timeDelays2, axis=1)
-        #train = np.append(naoLocations, predictedSoundSource, axis=1)
-        #train = np.append(naoLocations, soundSourceLoc, axis=1)
-        train = np.hstack([train, predictedSoundSource])
+            #Get the corresponding y value
+            coord1 = locationFunction(X_coord, delayMic[j], distances[j])
+            shift1.append(coord1)
+            #convert to from local space to real space
+            yPlus1.append(np.array(localToReal(shift1, naoCombos, midPoint[j], closests[j])))
+
+            shift2 = [X2_coord]
+            coord2 = locationFunction(X2_coord, delayMic[j], distances[j])
+            shift2.append(coord2)
+            yPlus2.append(np.array(localToReal(shift2, naoCombos, midPoint[j], closests[j])))
+
+            #Negative Part
+            shift3 = [X_coord]
+            shift3.append(-coord1)
+            yMin1.append(np.array(localToReal(shift3, naoCombos, midPoint[j], closests[j])))
+
+            shift4 = [X2_coord]
+            shift4.append(-coord2)
+            yMin2.append(np.array(localToReal(shift4, naoCombos, midPoint[j], closests[j])))
+
         
-        #Split data in test and training sets.
-        testLength = 100
-        pre_test = train[-testLength:]
-        pre_train = train[:len(train)-testLength]
-        classTest = classification[-testLength:]
-        classTrain = classification[:len(classification)-testLength]
-    
-        #Normalize test & training data
-        norm_train = pre_train#preprocessing.normalize(pre_train)
-        norm_test = pre_test#preprocessing.normalize(pre_test)
-    
-        #Use calculated sound source location & own location for multiple linear regression
-        model = trainModel(norm_train, classTrain, 2)
-        #modelSM = trainModelSM(norm_train, classification)
-    
-        #Do prediction on test data & print report
-        classPred = model.predict(norm_test)
-        #classPredProb = model.predict_proba(norm_test)
+        #Arrayify the coordinates of possible sound source locations
+        intersections = []
+        yPlus1 = np.array(yPlus1)
+        yPlus2 = np.array(yPlus2)
+        yMin1 = np.array(yMin1)
+        yMin2 = np.array(yMin2)
         
-        #Best param selection
-        Accu = accuracy_score(classTest, classPred)
-        #if Accu > BestAccu:
-        #    BestAccu = Accu
-        #    BestN = n
+        #Create the lines to use for intersection
+        lines = []
+        for j in range(len(yPlus1)):
+            lines.append(line(yPlus1[j], yPlus2[j]))
+            lines.append(line(yMin1[j], yMin2[j]))
         
-        #Print the Results
-        print(model.__class__.__name__)
-        print("The noise multiplier: " + str(multiplier))
-        print("The accuracy: " + str(Accu))
-        print(classification_report(classTest, classPred, target_names=['Inside','Out of bounds']))
-        print("The Mean Squared Error: " + str(mean_squared_error(classTest, classPred)))
-        print("Cofusion Matrix: ")
-        print("(tn, fp, fn, tp)")
-        print(confusion_matrix(classTest, classPred).ravel())
-        print("-------")
+        #Intersect all the lines, except for itself and the minus version
+        for j in range(len(lines)):
+            l = 0
+            if j%2 == 0:
+                l = j+2
+            else:
+                l = j+1
+            for k in range(l, len(lines), 1):
+                intersections.append(intersection(lines[j], lines[k]))
+
+        #Apply the heuristic of throwing out intersection that are estimated 
+        #to be outside the placement zone of the Sound source during the simulation
+        goodIntsect = []
+        for j in range(len(intersections)):
+            if (intersections[j][0] < 12 and intersections[j][0] > -12) and (intersections[j][1] < 12 and intersections[j][1] > -12):
+                goodIntsect.append(intersections[j])
+        
+        predictedSoundSource.append(averageCoords(goodIntsect))
+        
+    #Create bias column
+    train = np.ones([len(naoLocations),1])
+    #Append time delays to locations to form complete matrix of data
+    #train = np.append(naoLocations, timeDelays2, axis=1)
+    #train = np.append(naoLocations, predictedSoundSource, axis=1)
+    #train = np.append(naoLocations, soundSourceLoc, axis=1)
+    train = np.hstack([train, predictedSoundSource])
+    
+    #classification = changeToMinusOne(classification)
+    
+    #Split data in test and training sets.
+    testLength = 100
+    pre_test = train[-testLength:]
+    pre_train = train[:len(train)-testLength]
+    classTest = classification[-testLength:]
+    classTrain = classification[:len(classification)-testLength]
+
+    #Normalize test & training data
+    norm_train = preprocessing.normalize(pre_train)
+    norm_test = preprocessing.normalize(pre_test)
+
+    #Use calculated sound source location & own location for multiple linear regression
+    model = trainModel(norm_train, classTrain, 2)
+    #modelSM = trainModelSM(norm_train, classification)
+
+    #Do prediction on test data & print report
+    classPred = model.predict(norm_test)
+    #classPredProb = model.predict_proba(norm_test)
+    
+    #Best param selection
+    Accu = accuracy_score(classTest, classPred)
+    #if Accu > BestAccu:
+    #    BestAccu = Accu
+    #    BestN = n
+    
+    #Print the Results
+    print(model.__class__.__name__)
+    print("The noise multiplier: " + str(multiplier))
+    print("The accuracy: " + str(Accu))
+    print(classification_report(classTest, classPred, target_names=['Inside','Out of bounds']))
+    print("The Mean Squared Error: " + str(mean_squared_error(classTest, classPred)))
+    print("Cofusion Matrix: ")
+    print("(tn, fp, fn, tp)")
+    print(confusion_matrix(classTest, classPred).ravel())
+    print("-------")
     print(BestAccu)
     print(BestN)
 
